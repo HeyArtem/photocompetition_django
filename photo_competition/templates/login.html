@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block title %}Вход{% endblock %}
+
+
+{% block content %}
+
+    <form action="{% url "login" %}" method="post">
+        <hr><hr>
+        {% csrf_token %}
+        {% for f in form %}
+            <br>{{ f }}
+            <label for="{{ f.id_for_label }}" class="label-auth" >{{ f.label }}</label>
+        {% endfor %}
+        <p>{{ form.errors }}</p>
+
+        <button type="submit" class="btn-login">Войти</button>
+    </form>
+
+    <div class="block-with-text-reg-acc">
+        <hr><hr>
+        <p class="text-create-acc">Ещё нет аккаунта? Создай его, нажав на ссылку ниже</p>
+        <a href="{% url "register" %}" class="small-text">
+            <small>Зарегестрировать аккаунт</small>
+        </a>
+    </div>
+
+
+{% endblock %}

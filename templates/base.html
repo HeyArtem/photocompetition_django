@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}{% endblock title %}</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <script src="{% static 'jquery/jquery-3.7.1.js' %}"></script>
+
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+          integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"
+            integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+            crossorigin="anonymous"></script>
+</head>
+<body>
+
+<header>
+    <div>
+        <div>Фотоконкурс</div>
+        <a href="{% url 'index' %}">На главную</a>
+    </div>
+
+    <div class="list-links">
+        {% if not request.user.is_authenticated %}
+            <div class="link-item"><a href="{% url 'login' %}">Войти</a></div>
+
+        {% elif request.user.is_staff %}
+            <div class="link-item"><a href="{% url 'create' %}">Добавить пост</a></div>
+            <div class="link-item"><a href="{% url 'logout' %}">Выйти</a></div>
+            <div class="link-item">{{ request.user.username }}</div>
+
+        {% else %}
+            <div class="link-item"><a href="{% url 'create' %}">Добавить пост</a></div>
+            <div class="link-item"><a href="{% url 'logout' %}">Выйти</a></div>
+            <div class="link-item">{{ request.user.username }}</div>
+        {% endif %}
+    </div>
+</header>
+
+
+{% block content %}
+{% endblock content %}
+
+
+</body>
+</html>

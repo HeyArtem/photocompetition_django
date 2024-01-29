@@ -1,0 +1,1735 @@
+Проект фотоконкурс
+photo_competition
+
+
+
+
+tz
+                Требования к реализации сайта с фотоконкурсом
+
+Голоса (лайки), комментарии, фотографии должны быть реализованы отдельными моделями с соответствующими связями между ними (один к одному, один ко многим, многие ко многим, возможно, полиморфных). Все модели, связанные отношением многие ко многим, должны иметь явную модель связующей таблицы. Загружаемые изображения должны иметь несколько версий для отображения в разных разделах сайта. Для проекта необходимо использовать пакетный менеджер Pipenv
+
+В качестве базы данных необходимо использовать PostgreSQL.
+
+                Функционал для всех пользователей
+Все пользователи (в том числе неавторизованные), зайдя на сайт, имеют
+возможность:
+        • просматривать предоставленные фотографии пользователей, осуществлять
+        сортировку и поиск по фотографиям 
+        • к каждой фотографии видеть следующую информацию:
+        • количество голосов
+        • количество комментариев
+        • имя автора
+        • название к фото
+        • дату публикации фото 
+        • описание к фото
+        • воспользоваться набором сортировок:
+        • по количеству голосов
+        • по дате добавления
+        • по общему количеству комментариев в рамках фотографии
+        • воспользоваться поиском. Поисковое условие: вхождение подстроки в имя
+        пользователя / в название к фото / в описание к фото
+
+                Функционал для авторизованных пользователей
+Авторизованный пользователь может, помимо описанного выше функционала:
+        • проголосовать за понравившиеся фотографии или снять свой голос (не
+        более 1 голоса для 1 фотографии)
+        • оставить, изменить и удалить свой комментарий к фотографии
+
+        • загрузить фото, при этом обязательными полями будут сама фотография, ее
+        название и описание; нужно также добавить валидацию на тип
+        загружаемого файла
+        • изменить фотографию, ее название или описание. В случае изменения
+        самого файла фотографии его необходимо отправить на повторную
+        модерацию и уведомить об этом пользователя. При этом надо
+        предусмотреть, чтобы модератор мог видеть как предыдущую, так и новую
+        версию фото
+        • удалить фото. Данное действие должно произойти с задержкой, чтобы
+        пользователь мог в случае ошибки отменить удаление фото (для боевого
+        сайта в течение 1 дня с момента удаления - нам же будет достаточно
+        намного более короткого срока, для проверки работоспособности данной
+        фичи). Фотография должна быть снята с конкурса в момент фактического
+        удаления фото
+        • видеть список своих фотографий с возможностью фильтрации (на
+        модерации / одобренные / на удалении), а так же с возможностью
+        восстановить фотографию, отправленную на удаление
+        • получить или заново сгенерировать свой API ключ (сессионный токен)
+        
+Авторизованный пользователь должен получать нотификации в режиме реального
+времени (без получения нотификаций о событиях произошедших, когда он был
+оффлайн) с использованием технологии WebSocket. Данный блок требуется
+реализовать отдельным приложением в рамках Django-проекта.
+        Список событий для уведомления пользователя:
+        • его фотографию одобрили / отклонили
+        • за его фотографию проголосовали / сняли голос (с информацией о том, кто
+        это сделал и с информацией о текущем количестве голосов к этому фото)
+        • в рамках его фотографии добавлен комментарий (с информацией о том, кем
+        был добавлен и с информацией о текущем количестве комментариев на
+        этом фото)
+        • фотография, к которой пользователь оставил комментарий, отправлена на
+        удаление, и что его комментарий скоро будет удален
+
+
+$ django-admin startproject conf
+$ mv conf photo_competition
+
+$ pipenv shell - создал вирт
+$ pipenv install pipenv
+
+       уста-ю нужные библиотеки:
+$ pipenv install django==4.0.0
+$ pipenv install celery
+
+! Если был готовый pipenv, то $ pipenv install !
+
+$ sudo apt-get install libpq-dev python3-dev    -доп библ для python на unix системах
+$ pipenv install psycopg2 
+        ($ pipenv uninstall psycopg2 что бы удалить) самая популярная
+         библиотека для PostgreSQL в языке программирования python
+
+$ pipenv install django-split-settings
+        # Помогает настройки, разбить на несколько файлов. 
+        django-split-settings автоматич это все собирает
+         (database.py+django.py )
+         
+$ pipenv install pillow
+
+        - указываю это виртОкруж в настройках Pych: -
+gear-settings-Python interpritator-Add interpritator-Pipenv Enviroment-Base interpritator(выбираю версию Python, в этом проекте выб-ю /usr/bin/python3.9)-Pipenv executable-выбираю фаил из пути /home/heyartem/.local/share/virtualenvs/die_message_repeat--xo4w6gm/bin/pipenv-OK-OK-Apply
+
+
+
+-Созд прилож, в котором будут храниться наши модели проекта и приложение
+$ python3 manage.py startapp models_app
+$ python3 manage.py startapp photo_competition
+
+
+
+create .gitignore:
+Вставляю в .gitignore:
+        .idea/
+        __pycache__/
+        __pycache__
+        .idea
+        media/
+        media
+        .mypy_cache
+        uploads
+        notes_photo_competition
+
+
+
+
+ 
+
+in settings:
+        LANGUAGE_CODE = 'ru-ru'
+
+        TIME_ZONE = 'Europe/Moscow'
+        
+
+
+in conf/settings.py:
+        INSTALLED_APPS = [
+            'django.contrib.admin',
+            'django.contrib.auth',
+            'django.contrib.contenttypes',
+            'django.contrib.sessions',
+            'django.contrib.messages',
+            'django.contrib.staticfiles',
+            'photo_competition', 
+        ]
+а лучше        'models_app.apps.ModelsAppConfig',
+
+
+-Настраиваю debuger
+Current File-Edit Configuration-+-Python-Name('Debuger')-Script path(путь до manage.py)-Parameters(runserver)-Apply OK
+
+
+Из models_app Удаляю следующие файлы:
+        tests.py, views.py, admin.py, models.py 
+        
+В models_app создаю два Python Package: 
+        admin, 
+        models
+        (apps.py - указывает, что папка является приложением)	
+
+
+В дирек-рии photo_competition удалить:
+        migrations, admin.py, models.py, tests.py, views.py (oставить только __init__.py, apps.py)
+        
+
+В дирек-рии photo_competition создать: 
+        dir views, 
+        dir templates, 
+        urls.py
+        
+В дире-рии conf:
+        rename settings.py --> settings_1.py
+        созд: Python Package settings
+        Внутри Python Package settings: 
+                создаю 
+                database.py, 
+                django.py, 
+                
+                
+итого общ вид:                
+        conf
+            |
+             settings
+                     |
+                     __init__.py
+                     database.py
+                     django.py
+             |
+             __init__.py
+             |
+             asgi.py
+             |
+             urls.py
+             |
+             wsgi.py
+
+in conf/settings/__init__.py:
+        from split_settings.tools import include
+
+        settings = [
+            "django.py",  # standard django settings
+            "database.py",  # postgres            
+        ]
+
+        # Include settings:
+        include(*settings)
+        
+                
+Содержимое из conf/settings_1.py , копирую, вставляю в conf/settings/django.py
+django.py:
+        from pathlib import Path
+
+        # Build paths inside the project like this: BASE_DIR / 'subdir'.
+        BASE_DIR = Path(__file__).resolve().parent.parent
+
+        # Quick-start development settings - unsuitable for production
+        # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
+
+        # SECURITY WARNING: keep the secret key used in production secret!
+        SECRET_KEY = 'django-insecure-h0+*f@ava)r)k5yuc#77jv2#q6hq#i0#=oca#q(5)qa%-+hu%x'
+
+        # SECURITY WARNING: don't run with debug turned on in production!
+        DEBUG = True
+
+        ALLOWED_HOSTS = []
+
+        # Application definition
+
+        INSTALLED_APPS = [
+            'django.contrib.admin',
+            'django.contrib.auth',
+            'django.contrib.contenttypes',
+            'django.contrib.sessions',
+            'django.contrib.messages',
+            'django.contrib.staticfiles',
+            'photo_competition',
+        ]
+
+        MIDDLEWARE = [
+            'django.middleware.security.SecurityMiddleware',
+            'django.contrib.sessions.middleware.SessionMiddleware',
+            'django.middleware.common.CommonMiddleware',
+            'django.middleware.csrf.CsrfViewMiddleware',
+            'django.contrib.auth.middleware.AuthenticationMiddleware',
+            'django.contrib.messages.middleware.MessageMiddleware',
+            'django.middleware.clickjacking.XFrameOptionsMiddleware',
+        ]
+
+        ROOT_URLCONF = 'conf.urls'
+
+        TEMPLATES = [
+            {
+                'BACKEND': 'django.template.backends.django.DjangoTemplates',
+                'DIRS': [],
+                'APP_DIRS': True,
+                'OPTIONS': {
+                    'context_processors': [
+                        'django.template.context_processors.debug',
+                        'django.template.context_processors.request',
+                        'django.contrib.auth.context_processors.auth',
+                        'django.contrib.messages.context_processors.messages',
+                    ],
+                },
+            },
+        ]
+
+        WSGI_APPLICATION = 'conf.wsgi.application'
+
+        # Database
+        # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
+
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.sqlite3',
+                'NAME': BASE_DIR / 'db.sqlite3',
+            }
+        }
+
+        # Password validation
+        # https://docs.djangoproject.com/en/4.0/ref/settings/#auth-password-validators
+
+        AUTH_PASSWORD_VALIDATORS = [
+            {
+                'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+            },
+            {
+                'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+            },
+            {
+                'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+            },
+            {
+                'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+            },
+        ]
+
+        # Internationalization
+        # https://docs.djangoproject.com/en/4.0/topics/i18n/
+
+        LANGUAGE_CODE = 'ru-ru'
+
+        TIME_ZONE = 'Europe/Moscow'
+
+        USE_I18N = True
+
+        USE_TZ = True
+
+        # Static files (CSS, JavaScript, Images)
+        # https://docs.djangoproject.com/en/4.0/howto/static-files/
+
+        STATIC_URL = 'static/'
+
+        # Default primary key field type
+        # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
+
+        DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+Удаляю conf/settings_1.py
+
+
+ - Настраиваю проект. - 
+Выношу подключение к БД в отдельный фаил        
+in conf/settings/django.py:
+
+вырезаю:
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.sqlite3',
+                'NAME': BASE_DIR / 'db.sqlite3',
+            }
+        }
+        
+-Настраиваю PostGres 
+$ pipenv install django-environ
+
+В корне проекта создаю фаил (просто фаил, не .py): .env
+in .env:
+        DATABASE_URL=postgres://hey_art:PassForPhoto_competition@localhost:5432/photo_competition
+        
+        расшифровка:
+        [
+                Движок: postgres:
+                User: hey_art
+                Password: PassForPhoto_competition
+                Name DataBase: photo_competition
+        ]
+      
+      
+                Напоминашка создания пользователя и самой БД
+        $ sudo -i -u postgres
+        $ psql
+        CREATE DATABASE photo_competition;
+        CREATE USER hey_art WITH PASSWORD 'PassForPhoto_competition';
+        GRANT ALL PRIVILEGES ON DATABASE photo_competition TO hey_art;
+        \q
+        ctrl+d
+        
+
+                main command
+        service postgresql status # проверка статуса установки
+        \du – список пользователей
+        \l - список БД
+        \? – справочник psql
+        \q (или Ctrl+D) – выход с программы
+
+
+-in conf/settings/django.py
+       
+        
+        import environ
+        import os
+        from pathlib import Path
+
+        env = environ.Env()
+
+        # Build paths inside the project like this: BASE_DIR / 'subdir'.
+        BASE_DIR = Path(__file__).resolve().parent.parent.parent
+        env.read_env(os.path.join(BASE_DIR, ".env"))
+
+        # # Build paths inside the project like this: BASE_DIR / 'subdir'.
+        # BASE_DIR = Path(__file__).resolve().parent.parent
+
+[
+расшифровка:
+env = environ.Env() - обращ-ся к библ-ке environ, создает экз-р класса Env()
+env.read_env(os.path.join(BASE_DIR, ".env"))
+        os.path.join - принимает аргуменьы и складувает в общий путь до папки проекта(photocompetition)
+        BASE_DIR = Path(__file__).resolve().parent.parent.parent - полный путь до папки photocompetition
+        read_env - читает путь до этого файла и записывает в переменую окружения
+]
+
+
+in conf/settings/database.py
+        from conf.settings.django import env
+
+        DATABASES = {"default": env.db()}
+
+in conf/settings/django.py:
+вырезаю
+        SECRET_KEY = 'django-insecure-tgroang3+c41t$2hh(m0y143#&3)@(s(_wq^1c2$x#*f*54s78'
+
+
+in .env:
+вставляю (убрал ковычки и пробелы!)
+        DATABASE_URL=postgres://art_hw_django_websocket:PassForWebsocket@localhost:5432/chatic_2
+        SECRET_KEY=django-insecure-tgroang3+c41t$2hh(m0y143#&3)@(s(_wq^1c2$x#*f*54s78
+        DEBUG=True
+        сюда нужно allowed_host!!!
+Вверху этой странички горела надпись 'Plugins supporting .env files found'
+Я выбрал 'install plugins'-оба пункта-restart
+После перезагрузки, переменные в .env стали подсвечиваться другим цветом 
+        
+
+in conf/settings/django.py:
+        SECRET_KEY = env('SECRET_KEY', cast=str)
+        
+в INSTALLED_APPS подкл-ю наши приложения:
+in conf/settings/django.py:
+      
+        DEBUG = env('DEBUG', cast=bool)
+        ALLOWED_HOSTS = ['*']
+
+        # Application definition
+
+        INSTALLED_APPS = [
+            'django.contrib.admin',
+            'django.contrib.auth',
+            'django.contrib.contenttypes',
+            'django.contrib.sessions',
+            'django.contrib.messages',
+            'django.contrib.staticfiles',
+            'photo_competition',
+            'models_app',
+        ]
+or 'models_app.apps.ModelsAppConfig',
+
+так же меняю и дописываю в in conf/settings/django.py:
+        LANGUAGE_CODE = 'ru-ru'
+
+        TIME_ZONE = 'Europe/Moscow'
+
+        USE_I18N = True
+
+        USE_TZ = True
+
+        # Static files (CSS, JavaScript, Images)
+        # https://docs.djangoproject.com/en/4.0/howto/static-files/
+
+        STATIC_URL = 'static/'
+        STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+
+        MEDIA_URL = 'media/'
+        MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+
+- Конфигурирую urls
+in conf/urls.py:
+        from django.contrib import admin
+        from django.urls import path, include
+        from django.conf.urls.static import static
+        from conf.settings import django
+
+        urlpatterns = [
+                          path('admin/', admin.site.urls),
+                          path('', include('photo_competition.urls')),
+                      ] + static(django.MEDIA_URL, document_root=django.MEDIA_ROOT)
+
+        urlpatterns += static(django.STATIC_URL, document_root=django.STATIC_ROOT)
+
+
+create
+photo_competition/views/post/post.py
+photo_competition/views/user/user.py
+
+
+
+
+photo_competition/urls.py
+        from django.urls import path
+        """
+        Вписать 
+        Импорты
+        вьюхи
+        """
+        urlpatterns = [    
+            path('', PostListView.as_view(), name="index"),
+            
+            path('user/login/', UserLoginView.as_view(), name="login"),
+            path('user/register/', UserRegisterView.as_view(), name="register"),
+            path('user/logout/', logout_user, name="logout"),
+        ]
+
+in models_app/models create:
+        models_app/models/comment
+        models_app/models/comment/models.py
+
+        models_app/models/like
+        models_app/models/like/models.py
+
+        models_app/models/post
+        models_app/models/post/models.py
+
+        models_app/models/picture
+        models_app/models/picture/models.py
+
+        models_app/models/status
+        models_app/models/status/models.py
+
+        models_app/models/user
+        models_app/models/user/models.py
+
+
+create: 
+        photo_competition/templates
+        photo_competition/templates/index.html
+
+
+create:
+        models_app/admin/comment
+        models_app/admin/comment/admin.py
+
+        models_app/admin/like
+        models_app/admin/like/admin.py
+
+        models_app/admin/picture
+        models_app/admin/post
+        models_app/admin/status
+        Короче в кажд папку положить admin.py
+ 
+
+models_app/models/user/models.py
+        from django.contrib.auth.models import AbstractUser
+        from django.db import models
+        from django.urls import reverse
+
+
+        class User(AbstractUser):
+            avatar = models.ImageField(
+                upload_to='users/avatar/', verbose_name='Аватар'
+            )
+
+            def __str__(self):
+                return self.username
+
+            # Кнопка "Смотреть на сайте" в админке(Изменить пользователя)
+            def get_absolute_url(self):
+                return reverse('post', kwargs={'post_id': self.pk})
+
+            class Meta:
+                db_table = 'users'
+                verbose_name = 'Пользователь'
+                verbose_name_plural = 'Пользователи'
+
+                # Сортировка в админке (& listView) по дате регистрации (в обр-ом порядке), дальше по Имени
+                # Но я сделаю в админке
+                # ordering = ['-date_joined', 'username']
+
+
+
+models_app/models/post/models.py
+        from django.db import models
+
+
+        class Post(models.Model):
+            title = models.CharField(
+                max_length=50,
+                help_text='Впишите заголовок',
+                verbose_name='Заголовок'
+            )
+            created_at = models.DateTimeField(
+                auto_now_add=True,
+                verbose_name='Дата создания'
+            )
+            updated_at = models.DateTimeField(
+                auto_now=True,
+                verbose_name='Дата обновления'
+            )
+            description = models.TextField(
+                verbose_name='Текст поста'
+            )
+            status = models.ForeignKey(
+                'Status',
+                on_delete=models.CASCADE,
+                related_name='post_status',
+                verbose_name='Статус поста'
+            )
+            user = models.ForeignKey(
+                'User',
+                on_delete=models.CASCADE,
+                related_name='post_user',
+                verbose_name='Автор поста'
+            )
+
+            def __str__(self):
+                return f"{self.title}-{self.description}"
+
+            class Meta:
+                db_table = 'post'
+                verbose_name = 'Пост'
+                verbose_name_plural = 'Посты'
+
+
+
+
+
+Здесь много, чего нужно вписать, например настройка админки
+
+      
+models_app/models/comment/models.py
+        from django.db import models
+
+
+        class Comment(models.Model):
+            is_answer = models.BooleanField(
+                default=False,
+                verbose_name='Является ответом'
+            )
+            text = models.TextField(
+                verbose_name='Комментарий'
+            )
+            created_at = models.DateTimeField(
+                auto_now_add=True,
+                verbose_name='Дата создания'
+            )
+            updated_at = models.DateTimeField(
+                auto_now=True,
+                verbose_name='Дата обновления'
+            )
+            post = models.ForeignKey(
+                'Post',
+                on_delete=models.CASCADE,
+                related_name='comments_post',
+                verbose_name='Пост'
+            )
+            user = models.ForeignKey(
+                'User',
+                on_delete=models.CASCADE,
+                related_name='comments_user',
+                verbose_name='Автор комментария'
+            )
+            # ссылка на комментарий для которого текущий коммент является ответом
+            answer = models.ForeignKey(
+                 # II вар- 'Comment'
+                'self',
+                on_delete=models.CASCADE,
+                related_name='answers',
+                blank=True,
+                null=True,
+                verbose_name='Ответ'
+            )
+
+            def __str__(self):
+                return self.text
+
+            class Meta:
+                db_table = 'comments'
+                verbose_name = 'Комментарий'
+                verbose_name_plural = 'Комментарии'
+
+
+        
+models_app/models/like/models.py
+        from django.db import models
+
+
+        class Like(models.Model):
+            post = models.ForeignKey(
+                'Post',
+                on_delete=models.CASCADE,
+                related_name='likes_post',
+                verbose_name='Пост'
+            )
+            user = models.ForeignKey(
+                'User',
+                on_delete=models.CASCADE,
+                related_name='likes_user',
+                verbose_name='Пользователь'
+            )
+
+            def __str__(self):
+                return f"{self.post.title}-{self.user}"
+
+            class Meta:
+                db_table = 'likes'
+                verbose_name = 'Лайк'
+                verbose_name_plural = 'Лайки'
+
+       
+models_app/models/picture/models.py
+        from django.db import models
+
+
+        class Picture(models.Model):
+            current = models.BooleanField(
+                default=False,
+                verbose_name='Основная или вторичная'
+            )
+            image = models.ImageField(
+                upload_to='pictures/image/%Y/%m/%d',
+                verbose_name='Картинка'
+            )
+            post = models.ForeignKey(
+                'Post',
+                on_delete=models.CASCADE,
+                related_name='pictures',
+                verbose_name='Пост'
+            )
+
+            def __str__(self):
+                return f"{self.current}-{self.post.title}"
+
+            class Meta:
+                db_table = 'pictures'
+                verbose_name = 'Картинка'
+                verbose_name_plural = 'Картинки'
+
+
+       
+models_app/models/status/models.py
+        from django.db import models
+
+
+        class Status(models.Model):
+                # Сами статусы, я пропишу в админке
+            state = models.CharField(
+                max_length=20,
+                unique=True,
+                verbose_name='Статус'
+            )
+
+            def __str__(self):
+                return f"{self.id}-{self.state}"
+
+            class Meta:
+                db_table = 'statuses'
+                verbose_name = 'Статус'
+                verbose_name_plural = 'Статусы'
+
+
+models_app/models/__init__.py
+        from models_app.models.comment.models import Comment
+        from models_app.models.like.models import Like
+        from models_app.models.picture.models import Picture
+        from models_app.models.post.models import Post
+        from models_app.models.status.models import Status
+        from models_app.models.user.models import User
+        
+$ python manage.py makemigrations
+
+На этом этапе у меня возникли ошибки с SECRET_KEY, потому что я
+ установил split_settings за место $ pipenv install django-split-settings
+ 
+$ python manage.py migrate
+
+Тк у меня есть несколько статусов (), то мне необходимо сделать DATA MIGRATIONS 
+https://is20-2019.susu.ru/vysotskayaeo/2021/05/21/statya-data-migrations-perenos-dannyh/
+Др словами, если потом, кто-то будет скачивать мой проект, то эти данные (статично заданные статусы) 
+создадутся автоматически 
+
+$ python ./manage.py makemigrations --empty models_app
+        -создадуться пустые миграции
+        -захожу в них
+- in models_app/migrations/0002_auto_20240115_1720.py:
+        
+        # Generated by Django 4.0 on 2024-01-15 14:20
+
+        from django.db import migrations
+        from django.db.migrations import RunPython
+
+
+        def create_statuses(apps, schema_editor):
+            Status = apps.get_model('models_app', 'Status')
+            Status.objects.get_or_create(state='На модерации')
+            Status.objects.get_or_create(state='На удалении')
+            Status.objects.get_or_create(state='На отклонении')
+            Status.objects.get_or_create(state='Одобрена')
+            Status.objects.get_or_create(state='Отклонен')
+
+
+        class Migration(migrations.Migration):
+            dependencies = [
+                ('models_app', '0001_initial'),
+            ]
+
+            operations = [
+                RunPython(create_statuses)
+            ]
+
+#$ python manage.py makemigrations
+$ python manage.py migrate
+
+$ python manage.py createsuperuser
+$ python manage.py runserver
+
+Идем в админку, должно работать
+
+
+models_app/admin/status
+        from django.contrib import admin
+        from models_app.models import Status
+
+
+        @admin.register(Status)
+        class StatusAdmin(admin.ModelAdmin):
+            # Подписи в шапке
+            list_display = ('id', 'state',)
+
+            # Кликабельность в шапке
+            list_display_links = ('id', 'state',)
+
+models_app/admin/__init__.py
+        from models_app.admin.status.admin import StatusAdmin
+        
+В админке появились статусы
+
+models_app/admin/comment/admin.py  
+        from django.contrib import admin
+        from models_app.models import Comment
+
+
+        @admin.register(Comment)
+        class CommentAdmin(admin.ModelAdmin):
+            # Кнопка сохранить еще и сверху
+            save_on_top = True
+
+            # Подписи в шапке
+            list_display = ('id', 'is_answer', 'answer', 'updated_at', 'post', 'user',)
+
+            # Кликабельность в шапке
+            list_display_links = ('id', 'is_answer', 'answer', 'post', 'user',)
+
+            # По каким полям можно осущ-ять поиск (только CharField или TextField)
+            search_fields = ('id', 'is_answer', 'answer', 'updated_at', 'post', 'user',)
+
+            # Справа Фильтр
+            list_filter = ('id', 'is_answer', 'answer', 'updated_at', 'user', 'created_at',)
+
+            # Сортирока порядок
+            ordering = ('-updated_at', 'is_answer', 'answer')
+
+            # Пагинация
+            list_per_page = 3
+
+
+      
+models_app/admin/like/admin.py  
+        from django.contrib import admin
+        from models_app.models import Like
+
+
+        @admin.register(Like)
+        class LikeAdmin(admin.ModelAdmin):
+            # Кнопка сохранить еще и сверху
+            save_on_top = True
+
+            # Подписи в шапке
+            list_display = ('id', 'user', 'post')
+
+            # Кликабельность в шапке
+            list_display_links = ('user', 'post')
+
+            # По каким полям можно осущ-ять поиск (только CharField или TextField)
+            search_fields = ('user', 'post')
+
+            # Справа Фильтр
+            list_filter = ('user', 'post')
+
+            # Сортирока порядок
+            ordering = ('post',)
+
+
+        class LikeInline(admin.TabularInline):
+            model = Like
+            extra = 0
+
+
+      
+
+models_app/admin/picture  
+        from django.contrib import admin
+        from django.utils.safestring import mark_safe
+
+        from models_app.models import Picture
+
+        '''
+        Весь пост выводить не нужно
+        Можно  вывести нужно достать из '''
+
+
+        @admin.register(Picture)
+        class PictureAdmin(admin.ModelAdmin):
+            # Кнопка сохранить еще и сверху
+            save_on_top = True
+
+            # Подписи в шапке
+            list_display = ('id', 'current', 'post', 'get_html_image')
+
+            # Кликабельность в шапке
+            list_display_links = ('id', 'post', 'current',)
+
+            # По каким полям можно осущ-ять поиск (только CharField или TextField)
+            search_fields = ('id', 'post', 'current',)
+
+            # Справа Фильтр
+            list_filter = ('id', 'current', 'post',)
+
+            # Сортирока порядок
+            ordering = ('-post',)
+
+            # Отображение аватара-картинки
+            def get_html_image(self, obj):
+                if obj.image:
+                    return mark_safe(f'<img src="{obj.image.url}" width=50>')
+                return ' - '
+
+            # Подпись в шапке 'Картинка' (не get_html_avatar )
+            get_html_image.short_description = 'Картинка'
+
+
+        class PictureInline(admin.TabularInline):
+            model = Picture
+            extra = 0
+
+
+      
+
+models_app/admin/post  
+        from django.contrib import admin
+
+        from models_app.admin.like.admin import LikeInline
+        from models_app.admin.picture.admin import PictureInline
+        from models_app.models import Post
+
+
+        @admin.register(Post)
+        class PostAdmin(admin.ModelAdmin):
+            # Кнопка сохранить еще и сверху
+            save_on_top = True
+
+            # Подписи в шапке
+            list_display = ('id', 'status', 'title', 'updated_at', 'user',)
+
+            # Кликабельность в шапке (нельзя одновременно с list_editable)
+            list_display_links = ('id', 'title', 'user',)
+
+            # По каким полям можно осущ-ять поиск (только CharField или TextField)
+            search_fields = ('id', 'status', 'title', 'updated_at', 'user',)
+
+            # Справа Фильтр
+            list_filter = ('status', 'user',)
+
+            # Возможность отредачить мышкой (is_staff/is NOT staff)
+            list_editable = ('status',)
+
+            # Сортирока порядок
+            ordering = ('-updated_at', 'status', 'user',)
+
+            # Пагинация
+            list_per_page = 25
+
+            # Автоматич-е заполнение slug
+            prepopulated_fields = {"slug": ("title",)}
+
+            # при заполнении удобно выводятся все авторы
+            raw_id_fields = ['user']
+
+            # сверху строка навигации по датам
+            date_hierarchy = 'updated_at'
+
+            inlines = (PictureInline, LikeInline)
+            readonly_fields = ('created_at', 'count_likes', 'updated_at', 'id')
+
+            fieldsets = [
+                ("Общая информация", {'fields': ['id', 'title', 'slug', 'status', 'user', ]}),
+                ('Прочая информация',
+                 {'fields': ['count_likes', 'description', 'updated_at', 'created_at', ]}),
+            ]
+
+            def count_likes(self, obj):
+                return obj.likes_post.all().count()
+
+            count_likes.short_description = 'Кол-во лайков'
+
+
+models_app/admin/__init__.py
+        from models_app.admin.status.admin import StatusAdmin
+        from models_app.admin.like.admin import LikeAdmin
+        from models_app.admin.comment.admin import CommentAdmin
+        from models_app.admin.picture.admin import PictureAdmin
+        from models_app.admin.post.admin import PostAdmin
+        from models_app.admin.user.admin import UserAdmin
+
+В админке все появилось
+
+
+
+
+
+
+
+photo_competition/views/post/post.py
+        from django.shortcuts import render
+        from django.views import View
+        from models_app.models import Post
+
+        '''
+        class PostListView(View):
+        как отфильтровать посты со стасщим опубликован
+        '''
+
+
+        class PostListView(View):
+            def get(self, request, *args, **kwargs):
+                p = [1, 2, 3]
+                # posts = Post.objects.filter(status=Post.????).order_by(
+                #     '-updated_at'
+                # )
+
+                # return render(
+                #     request,
+                #     'index.html',
+                #     context={
+                #         'posts': Post.objects.all()
+                #     }
+                # )
+                return render(
+                    request,
+                    'index.html',
+                    context={
+                        'posts': p
+                    }
+                )
+
+
+        def index(request):
+            return render(request, 'photo_competition/index.html', {})
+
+
+        class PostCreateView(View):
+            def post(self, request, *args, **kwargs):
+                data = request.Post
+                ...
+
+
+
+
+
+
+photo_competition/templates
+photo_competition/templates/index.html
+        {% extends 'base.html' %}
+        {% block title %}Главная{% endblock %}
+
+        {% block content %}
+        <h1> Это индеееекс </h1>
+
+        {% for p in posts %}
+            <h2>{{p}}</h2>
+        {% endfor %}
+
+        {% endblock %}
+        
+
+templates/base.html
+        <!DOCTYPE html>
+
+        {% load static %}
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <title>{% block title %}{% endblock title %}</title>
+            <link rel="stylesheet" href="{% static 'css/style.css' %}">
+            <script src="{% static 'jquery/jquery-3.7.1.js' %}"></script>
+
+            <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+                  integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+            <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"
+                    integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+                    crossorigin="anonymous"></script>
+        </head>
+        <body>
+
+        <header>
+            <div>
+                <div>Фотоконкурс</div>
+                <a href="{% url 'index' %}">На главную</a>
+            </div>
+
+            <div class="list-links">
+                {% if not request.user.is_authenticated %}
+                    <div class="link-item"><a href="{% url 'login' %}">Войти</a></div>
+
+                {% elif request.user.is_staff %}
+                    <div class="link-item"><a href="{% url 'create' %}">Добавить пост</a></div>
+                    <div class="link-item"><a href="{% url 'logout' %}">Выйти</a></div>
+                    <div class="link-item">{{ request.user.username }}</div>
+
+                {% else %}
+                    <div class="link-item"><a href="{% url 'create' %}">Добавить пост</a></div>
+                    <div class="link-item"><a href="{% url 'logout' %}">Выйти</a></div>
+                    <div class="link-item">{{ request.user.username }}</div>
+                {% endif %}
+            </div>
+        </header>
+
+
+        {% block content %}
+        {% endblock content %}
+
+
+        </body>
+        </html>
+
+
+
+
+      
+
+
+
+
+
+
+
+
+
+        
+ 
+
+
+
+
+
+
+
+
+
+-Регистрация, авторизация, разлогинивание
+conf/settings/django.py:
+        DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+        #Название приложения, название модели
+        AUTH_USER_MODEL = 'models_app.User'
+        
+        
+        
+                !!! - - - - - - - - - - - - - - - - - - - - 
+        в models_app не должно лежать ничего, что не связано с БД\Админкой
+                - - - - - - - - - - - - - - - - - - - - 
+        
+        
+        
+create photo_competition/forms.py
+        from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
+        from django import forms
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+
+        # Альтернативное получение юзера
+        # from models_app.models import User
+        '''
+        в  password2, написал  widget=forms.CharField(... max_length=20
+        за местоPasswordInput
+        что бы увидеть, как меняется поле
+        '''
+
+
+        class RegisterUserForm(UserCreationForm):
+            '''
+                Это форма UserCreationForm для регистрации пользователя
+                если пароли не совпадут, форма автоматически не пропустит
+            '''
+            username = forms.CharField(
+                label='Логин zdes',
+                max_length=255,
+                widget=forms.TextInput(
+                    attrs={'id': 'textArea', 'class': 'login'}
+                )
+            )
+            password1 = forms.CharField(
+                label='Пароль',
+                widget=forms.PasswordInput(
+                    # attrs={'cols': 40, 'rows': 6, 'id': 'textArea', 'class': 'password'}
+                    attrs={'id': 'textArea', 'class': 'password'}
+                )
+            )
+            password2 = forms.CharField(
+                label='Пароль 2 через CharField звездочки??',
+                widget=forms.PasswordInput(
+                    attrs={'id': 'textArea', 'class': 'password'}
+                )
+                # attrs={'cols': 40, 'rows': 6, 'id': 'textArea', 'class': 'password'}
+            )
+
+            class Meta:
+                '''
+                Какая модель используется для этой формы
+                и какие поля определены для этой формы
+                '''
+                model = User
+                fields = ('username', 'password1', 'password2')
+
+
+        class LoginUserForm(AuthenticationForm):
+            username = forms.CharField(
+                label='Логин',
+                max_length=255,
+                widget=forms.TextInput(
+                    attrs={'id': 'textArea', 'class': 'login'}
+                )
+            )
+            password = forms.CharField(
+                label='Пароль',
+                widget=forms.PasswordInput(
+                    # attrs={'cols': 40, 'rows': 6, 'id': 'textArea', 'class': 'password'}
+                    attrs={'id': 'textArea', 'class': 'password'}
+                )
+            )
+
+            
+
+create 
+
+        photo_competition/static
+        photo_competition/static/css
+        photo_competition/static/css/style.css
+        photo_competition/static/img
+        photo_competition/static/jquery
+                (в нее поожить jquery-3.7.1.js)
+
+
+        photo_competition/views/post/post.py	        
+        photo_competition/views/user/user.py
+        
+
+
+photo_competition/views/post/post.py
+        from django.shortcuts import render
+        from django.views import View
+        from models_app.models import Post
+
+        '''
+        class PostListView(View):
+        как отфильтровать посты со стасщим опубликован
+        '''
+
+
+        class PostListView(View):
+            def get(self, request, *args, **kwargs):
+                # posts = Post.objects.filter(status=Post.????).order_by(
+                #     '-updated_at'
+                # )
+
+                return render(request, 'index.html', context={
+                    'posts': Post.objects.all()
+                })
+            
+        class PostCreateView(View):
+            def post(self, request, *args, **kwargs):
+                data = request.Post 
+                ...
+
+
+delete photo_competition/views/views.py
+
+photo_competition/views/user/user.py
+        # -*- coding: utf8 -*-
+        from django.contrib.auth import logout, login
+        from django.contrib.auth.views import LoginView
+        from django.shortcuts import redirect
+        from django.urls import reverse_lazy
+        from django.views.generic import CreateView
+
+        from photo_competition.forms import LoginUserForm, RegisterUserForm
+
+
+        def logout_user(request):
+            """Log out"""
+            logout(request)
+            return redirect('index')
+
+
+        class UserRegisterView(CreateView):
+            form_class = RegisterUserForm
+            template_name = 'register.html'
+
+            def form_valid(self, form):
+                user = form.save()
+                login(self.request, user)
+                return redirect('index')
+
+
+        class UserLoginView(LoginView):
+            form_class = LoginUserForm
+            template_name = 'login.html'
+
+            def get_success_url(self):
+                return reverse_lazy('index')
+
+
+
+photo_competition/views/user/user.py
+        # -*- coding: utf8 -*-
+        from django.contrib.auth import logout, login
+        from django.contrib.auth.views import LoginView
+        from django.shortcuts import redirect
+        from django.urls import reverse_lazy
+        from django.views.generic import CreateView
+
+        from photo_competition.forms import LoginUserForm, RegisterUserForm
+
+
+        def logout_user(request):
+            """Log out"""
+            logout(request)
+            return redirect('index')
+
+
+        class UserRegisterView(CreateView):
+            # Какая форма исп-ся для реги-ции
+            form_class = RegisterUserForm
+
+            # Шаблон котор будет исполь-ся
+            template_name = 'register.html'
+
+            # Когда пользователь ввел свои данные
+            def form_valid(self, form):
+                # Сохраняю пользователя
+                user = form.save()
+
+                # Логиню пользователя
+                login(self.request, user)
+                return redirect('index')
+
+
+        class UserLoginView(LoginView):
+            # Форма для логина
+            form_class = LoginUserForm
+            template_name = 'login.html'
+
+            # В случае успеха
+            def get_success_url(self):
+                return reverse_lazy('index')
+
+
+
+
+create
+        photo_competition/templates/photo_competition/login.html
+        photo_competition/templates/photo_competition/register.html
+        templates/base.html
+        
+
+
+templates/base.html
+        <!DOCTYPE html>
+
+        {% load static %}
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <title>{% block title %}{% endblock title %}</title>
+            <link rel="stylesheet" href="{% static 'css/style.css' %}">
+            <script src="{% static 'jquery/jquery-3.7.1.js' %}"></script>
+
+            <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+                  integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+            <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"
+                    integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+                    crossorigin="anonymous"></script>
+        </head>
+        <body>
+
+        <header>
+            <div>
+                <div>Фотоконкурс</div>
+                <a href="{% url 'index' %}">На главную</a>
+            </div>
+            <div class="list-links">
+                {% if not request.user.is_authenticated %}
+                    <div class="link-item"><a href="{% url 'login' %}">Войти</a></div>
+
+                {% elif request.user.is_staff %}
+                    <div class="link-item"><a href="{% url 'create' %}">Добавить пост</a></div>
+                    <div class="link-item"><a href="{% url 'logout' %}">Выйти</a></div>
+                    <div class="link-item">{{ request.user.username }}</div>
+
+                {% else %}
+                    <div class="link-item"><a href="{% url 'logout' %}">Выйти</a></div>
+                    <div class="link-item">{{ request.user.username }}</div>
+                {% endif %}
+            </div>
+        </header>
+
+
+        {% block content %}
+        {% endblock content %}
+
+
+        </body>
+        </html>
+	
+
+
+photo_competition/templates/photo_competition/login.html
+        {% extends 'base.html' %}
+        {% block title %}Вход{% endblock %}
+
+
+        {% block content %}
+
+            <form action="{% url "login" %}" method="post">
+                {% csrf_token %}
+                {% for f in form %}
+                    <label for="{{ f.id_for_label }}" class="label-auth">{{ f.label }}</label>
+                    <br>{{ f }}
+                {% endfor %}
+                <p>{{ form.errors }}</p>
+
+                <button type="submit" class="btn-login">Войти</button>
+            </form>
+
+            <div class="block-with-text-reg-acc">
+                <p class="text-create-acc">Ещё нет аккаунта? Создай его, нажав на ссылку ниже</p>
+                <a href="{% url "register" %}" class="small-text">
+                    <small>Зарегестрировать аккаунт</small>
+                </a>
+            </div>
+
+
+        {% endblock %}
+
+
+
+photo_competition/templates/photo_competition/register.html	
+        {% extends 'base.html' %}
+        {% block title %}Регистрация{% endblock %}
+
+
+        {% block content %}
+
+        <h3 class="text-auth">Регистрация</h3>
+        <div class="block-form-login">
+            <form action="{% url 'register' %}" method="post">
+                {% csrf_token %}
+
+                <!-- Прохожу циклом по моей форме (username, password1, password2) -->
+                {% for f in form %}
+                    <label for="{{ f.id_for_label }}" class="label-reg">{{ f.label }}</label>
+
+                    <!-- Это поле input -->
+                    <br>{{ f }}
+
+                    <!-- Вывод ошибок при регистрации -->
+                    <p>{{ f.errors }}</p>
+                {% endfor %}
+
+                <button type="submit" class="btn-reg">Зарегестрироваться</button>
+            </form>
+            <div class="block-with-text-reg-acc">
+                <p class="text-create-acc">Если уже есть аккаунт, ты можешь авторизоваться</p>
+                <a href="{% url " login" %}" class="small-text">
+                <small>Авторизоваться</small>
+                </a>
+            </div>
+
+        </div>
+
+        {% endblock %}
+
+
+
+
+photo_competition/static/css/style.css
+
+        body {
+            padding: 0 150px !important;
+            margin: 0 !important;
+        }
+
+        p {
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        header {
+            padding: 20px;
+            display: flex !important;
+            justify-content: space-between !important;
+            font-size: 25px;
+            background-color: #f8b88f;
+            border-radius: 0 0 10px 10px;
+        }
+
+        .list-links {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .link-item {
+            margin-left: 20px;
+        }
+
+        .main-container {
+            margin: 40px 0;
+        }
+
+        .card {
+            margin-bottom: 40px;
+            display: flex !important;
+            justify-content: space-between !important;
+            flex-direction: row !important;
+            border: 2px solid #444444 !important;
+        }
+
+        .left-container {
+            width: 50%;
+        }
+
+        .right-container {
+            width: 50%;
+            border-left: 2px solid #444444;
+            padding: 20px;
+        }
+
+        .image-post img{
+            width: 100%;
+        }
+
+        .tag_button {
+            background-color: unset;
+            border: none;
+        }
+
+        .block-tags {
+            display: flex;
+        }
+
+        .post-photo {
+        width: 50px;
+        }
+
+        .comment-display {
+            margin: 10px 0;
+            border: 1px solid gray;
+            padding: 10px;
+            border-radius: 15px;
+        }
+
+        .title-comment {
+            margin-left: 10px;
+            font-size: 20px;
+            margin-top: 10px;
+        }
+
+
+photo_competition/urls.py
+        ??????????????????
+
+
+
+
+conf/settings/django.py
+        TEMPLATES = [
+            {
+                'BACKEND': 'django.template.backends.django.DjangoTemplates',
+                'DIRS': [
+                    BASE_DIR / 'templates'
+                ],
+                'APP_DIRS': True,
+                'OPTIONS': {
+                    'context_processors': [
+                        'django.template.context_processors.debug',
+                        'django.template.context_processors.request',
+                        'django.contrib.auth.context_processors.auth',
+                        'django.contrib.messages.context_processors.messages',
+                    ],
+                },
+            },
+        ]
+
+
+
+
+        !!!после регистраций проверить
+        photo_competition/templates/login.html
+        photo_competition/templates/register.html
+        templates/base.html
+        photo_competition/templates/index.html
+
+
+
+
+174_2 43:00
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        - - - - - - Questions - - - - - - 
+photo_competition/static/css/style.css где-то нужно подключить?
+
+
+как отфильтровать посты со стасщим опубликован
+class PostListView(View):
+    def get(self, request, *args, **kwargs):
+        # posts = Post.objects.filter(status=Post.)
+        
+
+откуда брать jquery-3.7.1.js
+
+
+в случае неправильного ввода пароля выводится
+__all__
+Пожалуйста, введите правильные имя пользователя и пароль. Оба поля могут быть чувствительны к регистру.
+см. 
+        photo_competition/templates/login.html
+        <p>{{ form.errors }}</p>
+
+
+Макс сказал что это Мета класс это сложная и большая Тема и рассмотрим её через два месяца
+
+
+как-то криво выводится форма при логинизации, может placeholder=" "
+        photo_competition/templates/login.html
+        
+        {% for f in form %}
+                    <br>{{ f }}
+                    <label for="{{ f.id_for_label }}" class="label-auth" >{{ f.label }}   </label>
+        {% endfor %}
+
+
+при Регистрация, не получается сделать что бы звездочек не было
+        photo_competition/forms.py
+        password2 = forms.CharField(
+        label='Пароль 2 через CharField звездочки??',
+        widget=forms.PasswordInput(
+            attrs={'id': 'textArea', 'class': 'password'}
+        )
+
+        
+        и пробелы между полями ввода, откуда они?
+        
+
+-Когда в настройках 
+        MEDIA_URL = 'media/'
+        MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+        то дир-я media лежит
+        media
+        
+        так же в настройках 
+        STATIC_URL = 'static/'
+        STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+        но здесь я сам создаю static и причем путь
+        photo_competition/static
+ 
+ 
+-urlpatterns = [
+                  path('admin/', admin.site.urls),
+                  path('', include('photo_competition.urls')),
+              ] + static(django.MEDIA_URL, document_root=django.MEDIA_ROOT)
+
+urlpatterns += static(django.STATIC_URL, document_root=django.STATIC_ROOT)
+Почему мы пишем +static, а подключаем MEDIA?
+
+
+
+-Какой был план
+        er model
+        models(user, status, post, like, picture, comment)
+        миграции
+        urls
+        views
+        admin
+        User (login, logout, ....)
+        
+-вынес ALLOWED_HOSTS = ['*']
+
+-Мы хотели менять name у картинки
+
+-https://is20-2019.susu.ru/vysotskayaeo/2021/05/21/statya-data-migrations-perenos-dannyh/
+
+
+
+
+        - - - - - - Rules, information, knowledge - - - - - - 
+в models_app не должно лежать ничего, что не связано с БД\Админкой
+
+нужно послоянно делать
+$ pipenv shell
+views, models, admin - все по дирикториям
+$ pipenv graph - графический вывод всех зависимотей в терминал
+https://habr.com/ru/articles/415049/
+https://is20-2019.susu.ru/vysotskayaeo/2021/05/21/statya-data-migrations-perenos-dannyh/
+
+$ python ./manage.py makemigrations --empty models_app
+        создадуться пустые миграции
+        
+Фикстуры - это по сути тестовые данные. Они нужны для unit-тестирования. 
+        Это могут быть как данные в базе, так и обычные файлы 
+        (обычно 2 варианта, до и после обработки так скажем). 
+        Каждый раз когда запускаются тесты, эти данные используются для 
+        установления начального состояния системы, что бы тесты всегда выполнялись предсказуемо.     
+        
+Макс, ты пообещал, что развернем проект через doker
+
+
+        - - - - - - Notes - - - - - - 
+
+Стили поковырять!
+
+
+🚩️регаю юзера через register
+Olga
+1234Olga
+
+
+А где они себе аватрки будут делать
+
+background-color: #f8b88f;
+Почему я не смог войти с зареганым через админку пользователем зайти

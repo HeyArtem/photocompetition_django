@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block title %}Главная{% endblock %}
+
+{% block content %}
+<h1> Это индеееекс </h1>
+
+{% for p in posts %}
+    <h2>{{p}}</h2>
+{% endfor %}
+
+{% endblock %}
