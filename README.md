@@ -1,0 +1,1 @@
+# photocompetition_django
